@@ -1,3 +1,0 @@
-# import openCV
-
-print("test")
