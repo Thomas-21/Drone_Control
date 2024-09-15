@@ -18,15 +18,31 @@ class DroneManager(object):
         self.drone_address = (drone_ip,drone_port)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((self.host_ip,self.host_port))
+        
+        self.response = None
+        self.stop_event = threading.Event()
+        self._response_thread = threading.Thread(target= self.receive_response,
+                                           args= (self.stop_event, ))
+        
+        self._response_thread.start() 
+        
         self.send_command('command')
         self.send_command('streamon')
         
-        self.response = None
-        
+    def receive_response(self, stop_event):
+        while not stop_event.is_set():
+            try:
+                self.response, ip = self.socket.recvfrom(3000)
+                logger.info({'action':'receive_response', 'response':self.response})
+            except socket.error as ex:
+                logger.error({'action':'receive_response', 'ex': ex})
+                break
+            
     def __del__(self):
         self.stop()
         
     def stop(self):
+        self.stop_event.set()
         self.socket.close()
         
     def send_command(self, command):
@@ -46,3 +62,4 @@ if __name__ == '__main__':
     time.sleep(10)
     
     drone_manager.land()
+    drone_manager.stop()
